@@ -1,0 +1,63 @@
+#include "application.h"
+
+const int DELAY                 = 6000;
+
+namespace
+{
+    int lostconnectionTime   = 0;
+    int heaterStatus         = 0;
+}
+
+void setup() {
+   // Here's the pin configuration, same as last time
+   pinMode(D0, OUTPUT);
+
+   // We are also going to declare a Spark.function so that we can turn the heater on and off from the cloud.
+   Spark.function("heater",toggle);
+   // This is saying that when we ask the cloud for the function "heater", it will employ the function toggle() from this app.
+   
+   Spark.variable("heaterStatus", &heaterStatus, INT);
+
+   // For good measure, let's also make sure heater is off when we start:
+   digitalWrite(D0, LOW);
+}
+
+void loop() {
+    if (!Spark.connected()) 
+    {  //record when photon lost connection
+        if(lostconnectionTime == 0) 
+        {   
+            lostconnectionTime = Time.now();
+        }
+        if(Time.now() > (lostconnectionTime + DELAY)) 
+        { //try reconnect if disconnected > DELAY secs
+            Spark.connect();
+            
+            while(!Spark.connected()) 
+            {
+                Spark.process();
+            }
+        }
+    }
+    else
+    {
+        lostconnectionTime = 0;
+        heaterStatus = digitalRead(D0);
+    }
+}
+
+int toggle(String command) 
+{
+    if (command=="on") 
+    {
+        digitalWrite(D0,HIGH);
+        return 1;
+    }
+    else if (command=="off") {
+        digitalWrite(D0,LOW);
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
